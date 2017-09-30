@@ -1,3 +1,5 @@
-# Conexão Generica php
+# Conexão genérica com php
 
-Conexao acessivel a todo tipo de projeto
+Conexão acessivel a todos os tipos de projeto
+
+Simples de usar e documentado

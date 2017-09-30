@@ -1,18 +1,132 @@
 <?php
-$servidor   = "localhost";//Nome do servidor
-$usuario    = "root";//Nome do usuário
-$pws        = "";//senha
-$banco      = "ideia";//Nome do Bando de dados
 
-//Variável de conexão
-$conn = mysqli_connect($servidor,$usuario,$pws,$banco);
+include_once("Config.php");
 
-//Verifica se a conexão foi realizada
-if($conn){
-    //Se conectar ele vai escrever isso, mas isso deve ser tiradado depois que o teste de conexão for realizado
-    echo "ok";
-}else{
-    //Se não conectar ele vai matar e escrever o erro
-	die("Não conectou ao bd ".mysqli_connect_error());
+class Conexao {
+
+    private $tabela;
+    static $conexao;
+    private $clausula;
+
+    function __construct() {
+        try {
+            $pdo = new PDO("mysql:host=".HOST.";dbname=".DBNAME, USER, PASSWORD);
+        } catch (PDOException $e) {
+            echo $e->getMessage();
+        }
+        //Instancia da conexao, atribuindo todos os metodos
+        self::$conexao = $pdo;
+    }
+
+    //Setando a tabela a ser utilizada
+    function setTabela($tabela){
+    	$this->tabela = $tabela;
+    }
+
+    //Parametro a ser adicionado antes de qualquer operação
+    function where($parametro, $valor) {
+        if ($parametro != NULL && $valor != NULL) {
+            $this->clausula = "WHERE {$parametro} = '{$valor}'";
+        } else {
+            $this->clausula = NULL;
+        }
+        return $this->clausula;
+    }
+
+    /*
+    *
+    *ALGUNS EXEMPLOS DE UTILIZAÇÃO
+    *
+    */
+
+    function getAll(){
+        $select = self::$conexao->prepare("SELECT * FROM {$this->tabela}");
+        $select->execute();
+
+        if ($select->rowCount()) {
+            return $select->fetchAll(PDO::FETCH_ASSOC);
+        }
+    }
+
+    //Retorna uma coluna "Clausula é obrigatoria"
+    function getAllBy() {
+        if ($this->clausula != NULL || $this->clausula != "") {
+            $select = self::$conexao->prepare("SELECT * FROM {$this->tabela} {$this->clausula}");
+            $select->execute();
+            if ($select->rowCount()) {
+                return $select->fetch(PDO::FETCH_ASSOC);
+            } else {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
+
+    //Inserir dados no banco
+    function insert($dados) {
+        $chaves = implode(',', array_keys($dados));
+        $valores = "'" . implode("','", $dados) . "'";
+
+        //Criando Segurança para cadastro "Verificando a existencia de um valor do array ser vazio"
+        $count = 0;
+        foreach ($dados as $key => $valor) {
+            if ($valor == null) {
+                $count++;
+                break;
+            }
+        }
+
+        if ($count == 0) {
+            $insert = self::$conexao->prepare("INSERT INTO {$this->tabela} ({$chaves}) VALUES({$valores})");
+            $insert->execute();
+            if ($insert->rowCount()) {
+                return true;
+            }
+        }
+    }
+
+    //Alterar dados no banco
+
+    /*----------------------------------------------------------------------------------------------
+    *
+    *
+    *   PRECISA SER UM ARRAY ASSOCIATIVO, NOMEANDO AS CHAVES COM O NOME DAS COLUNAS A SER MODIFICADA
+    *
+    *
+    *   $dados = array('tb_email'=>'novoemail@email.com','tb_senha'=>'novaSenha123');
+    *
+    *
+    *
+    *----------------------------------------------------------------------------------------------
+    */
+    function update(array $dados) {
+
+        //Criando Segurança para cadastro "Verificando a existencia de um valor do array ser vazio"
+        $count = 0;
+        foreach ($dados as $key => $valor) {
+            if ($valor == null) {
+                continue;
+            }
+            $update = self::$conexao->prepare("UPDATE {$this->tabela} SET {$key} = '{$valor}' {$this->clausula}");
+            $update->execute();
+            if ($update->rowCount()) {
+                $count++;
+            }
+        }
+        if ($count > 0) {
+            return true;
+        }
+    }
+
+    function delete() {
+        if($this->clausula != NULL){
+            $prepare = self::$conexao->prepare("DELETE FROM {$this->tabela} {$this->clausula}");
+            $prepare->execute();
+
+            if ($prepare->rowCount()) {
+                return true;
+            }
+        }
+    }
 }
-?>
